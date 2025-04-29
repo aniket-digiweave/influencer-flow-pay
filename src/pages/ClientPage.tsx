@@ -1,23 +1,23 @@
 
 import React from "react";
 import PageLayout from "@/components/layouts/PageLayout";
-import InfluencerForm from "@/components/forms/InfluencerForm";
+import ClientForm from "@/components/forms/ClientForm";
 
-const Index = () => {
+const ClientPage = () => {
   return (
     <PageLayout>
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Influencer Payment Request</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Client Payment Confirmation</h1>
           <p className="text-muted-foreground mt-2">
-            Submit your details to get paid for your brand collaboration
+            Confirm that you've completed the payment for your influencer collaboration
           </p>
         </div>
         
-        <InfluencerForm />
+        <ClientForm />
       </div>
     </PageLayout>
   );
 };
 
-export default Index;
+export default ClientPage;
