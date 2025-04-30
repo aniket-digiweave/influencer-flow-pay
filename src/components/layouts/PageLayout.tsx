@@ -10,7 +10,7 @@ interface PageLayoutProps {
 const PageLayout = ({ children, className }: PageLayoutProps) => {
   return (
     <div className="min-h-screen gradient-bg flex flex-col">
-      <header className="py-4 px-6 flex justify-between items-center">
+      <header className="py-4 px-6 flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center">
           <svg 
             width="32" 
@@ -28,7 +28,7 @@ const PageLayout = ({ children, className }: PageLayoutProps) => {
               strokeLinejoin="round"
             />
           </svg>
-          <h1 className="text-xl font-semibold ml-2">Influencer Payment Manager</h1>
+          <h1 className="text-xl font-semibold ml-2">Digiweave Mediatech</h1>
         </div>
         <nav className="space-x-4">
           <a href="/" className="text-sm font-medium hover:text-primary transition-colors">
