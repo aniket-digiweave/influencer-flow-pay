@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -159,9 +160,9 @@ const InfluencerForm = () => {
         formData.email
       );
       
-      // Send data to webhook - Updated webhook URL here
+      // Send data to webhook - Using the correct webhook URL
       try {
-        await fetch("https://aniketgore.app.n8n.cloud/webhook/b3eb0773-bf61-4e3f-b48e-446d7393d0d4", {
+        await fetch("https://aniketgore.app.n8n.cloud/webhook-test/b3eb0773-bf61-4e3f-b48e-446d7393d0d4", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
