@@ -14,12 +14,12 @@ interface FormCardProps {
 const FormCard: React.FC<FormCardProps> = ({ title, description, children, footer, className }) => {
   return (
     <Card className={cn("w-full max-w-md mx-auto shadow-lg border-app-blue-200", className)}>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-semibold text-center">{title}</CardTitle>
-        {description && <CardDescription className="text-center">{description}</CardDescription>}
+      <CardHeader className="space-y-1 px-4 sm:px-6">
+        <CardTitle className="text-xl sm:text-2xl font-semibold text-center">{title}</CardTitle>
+        {description && <CardDescription className="text-center text-sm sm:text-base">{description}</CardDescription>}
       </CardHeader>
-      <CardContent>{children}</CardContent>
-      {footer && <CardFooter>{footer}</CardFooter>}
+      <CardContent className="px-4 sm:px-6">{children}</CardContent>
+      {footer && <CardFooter className="px-4 sm:px-6">{footer}</CardFooter>}
     </Card>
   );
 };

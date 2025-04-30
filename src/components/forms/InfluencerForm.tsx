@@ -21,13 +21,23 @@ const InfluencerForm = () => {
     instagramLink: "",
     email: "",
     paymentMethod: "bank",
-    bankDetails: "",
+    accountName: "",
+    accountNumber: "",
+    ifscCode: "",
+    bankName: "",
+    accountHolderName: "",
+    upiId: "",
     upiQrCode: "",
   });
   const [showSuccess, setShowSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState("");
 
-  const brands = getBrands();
+  // Custom brands list
+  const brands = [
+    "YFF",
+    "Anand Home Store",
+    ...getBrands().filter(brand => brand !== "YFF" && brand !== "Anand Home Store")
+  ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -91,16 +101,24 @@ const InfluencerForm = () => {
       return false;
     }
     
-    if (
-      formData.paymentMethod === "bank" && !formData.bankDetails ||
-      formData.paymentMethod === "upi" && !formData.upiQrCode
-    ) {
-      toast({
-        title: "Error",
-        description: "Please enter your payment details",
-        variant: "destructive",
-      });
-      return false;
+    if (formData.paymentMethod === "bank") {
+      if (!formData.accountNumber || !formData.ifscCode || !formData.bankName || !formData.accountHolderName) {
+        toast({
+          title: "Error",
+          description: "Please fill in all bank details",
+          variant: "destructive",
+        });
+        return false;
+      }
+    } else if (formData.paymentMethod === "upi") {
+      if (!formData.upiId) {
+        toast({
+          title: "Error",
+          description: "Please enter your UPI ID",
+          variant: "destructive",
+        });
+        return false;
+      }
     }
     
     return true;
@@ -122,17 +140,48 @@ const InfluencerForm = () => {
       // Get payment details based on selected method
       const paymentDetails = 
         formData.paymentMethod === "bank" 
-          ? formData.bankDetails 
-          : formData.upiQrCode;
+          ? {
+              accountNumber: formData.accountNumber,
+              ifscCode: formData.ifscCode,
+              bankName: formData.bankName,
+              accountHolderName: formData.accountHolderName
+            }
+          : {
+              upiId: formData.upiId,
+              upiQrCode: formData.upiQrCode
+            };
           
       // Submit form to service
       const result = submitInfluencerForm(
         brandName,
         formData.instagramLink,
-        paymentDetails,
+        JSON.stringify(paymentDetails),
         formData.paymentMethod as "bank" | "upi",
         formData.email
       );
+      
+      // Send data to webhook
+      try {
+        await fetch("https://aniketgore.app.n8n.cloud/webhook-test/a24de5a1-a563-415c-b0d6-3ba55119cd79", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            brand: brandName,
+            instagramLink: formData.instagramLink,
+            email: formData.email,
+            paymentMethod: formData.paymentMethod,
+            paymentDetails: paymentDetails,
+            paymentId: result.id,
+            timestamp: new Date().toISOString()
+          }),
+          mode: "no-cors"
+        });
+        console.log("Data sent to webhook successfully");
+      } catch (webhookError) {
+        console.error("Error sending data to webhook:", webhookError);
+      }
       
       // Show success message
       setPaymentId(result.id);
@@ -146,7 +195,12 @@ const InfluencerForm = () => {
         instagramLink: "",
         email: "",
         paymentMethod: "bank",
-        bankDetails: "",
+        accountName: "",
+        accountNumber: "",
+        ifscCode: "",
+        bankName: "",
+        accountHolderName: "",
+        upiId: "",
         upiQrCode: "",
       });
     } catch (error) {
@@ -166,18 +220,18 @@ const InfluencerForm = () => {
       {showConfetti && <ConfettiEffect duration={5000} />}
       
       {showSuccess ? (
-        <Card className="w-full max-w-md mx-auto p-6 animate-scale-in">
+        <Card className="w-full max-w-md mx-auto p-4 sm:p-6 animate-scale-in">
           <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-20 h-20 rounded-full bg-app-green-100 flex items-center justify-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-app-green-100 flex items-center justify-center">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M20 6L9 17L4 12" stroke="#66BB6A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <h2 className="text-2xl font-semibold">Thank You!</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold">Thank You!</h2>
             <p className="text-muted-foreground">Your submission was successful!</p>
-            <div className="py-4">
+            <div className="py-4 w-full">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Your Payment ID</h3>
-              <div className="bg-app-blue-100 rounded-lg p-3 font-mono text-lg">
+              <div className="bg-app-blue-100 rounded-lg p-3 font-mono text-base sm:text-lg break-all">
                 {paymentId}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
@@ -258,12 +312,12 @@ const InfluencerForm = () => {
 
             <div className="space-y-2">
               <Label>Payment Method</Label>
-              <div className="flex space-x-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   type="button"
                   variant={formData.paymentMethod === "bank" ? "default" : "outline"}
                   onClick={() => handleSelectChange("paymentMethod", "bank")}
-                  className="flex-1"
+                  className="w-full"
                 >
                   Bank Transfer
                 </Button>
@@ -271,7 +325,7 @@ const InfluencerForm = () => {
                   type="button"
                   variant={formData.paymentMethod === "upi" ? "default" : "outline"}
                   onClick={() => handleSelectChange("paymentMethod", "upi")}
-                  className="flex-1"
+                  className="w-full"
                 >
                   UPI
                 </Button>
@@ -279,27 +333,61 @@ const InfluencerForm = () => {
             </div>
 
             {formData.paymentMethod === "bank" && (
-              <div className="space-y-2">
-                <Label htmlFor="bankDetails">Bank Details</Label>
-                <Textarea
-                  id="bankDetails"
-                  name="bankDetails"
-                  placeholder="Account Number, IFSC Code, Bank Name, Account Holder Name"
-                  rows={4}
-                  value={formData.bankDetails}
-                  onChange={handleChange}
-                />
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="accountHolderName">Account Holder Name</Label>
+                  <Input
+                    id="accountHolderName"
+                    name="accountHolderName"
+                    placeholder="Enter account holder name"
+                    value={formData.accountHolderName}
+                    onChange={handleChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="accountNumber">Account Number</Label>
+                  <Input
+                    id="accountNumber"
+                    name="accountNumber"
+                    placeholder="Enter account number"
+                    value={formData.accountNumber}
+                    onChange={handleChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="ifscCode">IFSC Code</Label>
+                  <Input
+                    id="ifscCode"
+                    name="ifscCode"
+                    placeholder="Enter IFSC code"
+                    value={formData.ifscCode}
+                    onChange={handleChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="bankName">Bank Name</Label>
+                  <Input
+                    id="bankName"
+                    name="bankName"
+                    placeholder="Enter bank name"
+                    value={formData.bankName}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
             )}
 
             {formData.paymentMethod === "upi" && (
               <div className="space-y-2">
-                <Label htmlFor="upiQrCode">UPI ID or Upload QR Code</Label>
+                <Label htmlFor="upiId">UPI ID or Upload QR Code</Label>
                 <Input
                   id="upiId"
                   name="upiId"
                   placeholder="your@upi"
-                  value={formData.upiQrCode}
+                  value={formData.upiId}
                   onChange={handleChange}
                   className="mb-2"
                 />

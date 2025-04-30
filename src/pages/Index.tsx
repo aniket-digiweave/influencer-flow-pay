@@ -8,7 +8,7 @@ const Index = () => {
     <PageLayout>
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Influencer Payment Request</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Digiweave's Influencer Payment Manager</h1>
           <p className="text-muted-foreground mt-2">
             Submit your details to get paid for your brand collaboration
           </p>
