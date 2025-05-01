@@ -189,59 +189,70 @@ const InfluencerForm = () => {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
-    setLoading(true);
-    
-    try {
-      const result = await submitInfluencerForm(formData);
-      
-      if (result.success && result.data) {
-        // Show success message
-        setPaymentId(result.data.payment_id);
-        setShowConfetti(true);
-        setShowSuccess(true);
-        
-        // Reset form
-        setFormData({
-          brand: "",
-          customBrand: "",
-          influencerName: "",
-          amount: 0,
-          instagramLink: "",
-          email: "",
-          paymentMethod: "bank",
-          accountHolderName: "",
-          accountNumber: "",
-          ifscCode: "",
-          bankName: "",
-          upiId: "",
-          upiQrCode: null,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: result.error?.message || "Something went wrong. Please try again later.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error("Error submitting form:", error);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!validateForm()) {
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const result = await submitInfluencerForm(formData);
+
+    if (result.success && result.data) {
+      // ✅ POST to n8n webhook after Supabase success
+      await fetch("https://aniketgore.app.n8n.cloud/webhook-test/acbc77a6-6d23-41a1-b261-9d4e6f1058c1",{
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          payment_id: result.data.payment_id,
+        }),
+      });
+
+      // 🎉 UI success handling
+      setPaymentId(result.data.payment_id);
+      setShowConfetti(true);
+      setShowSuccess(true);
+
+      // 🔄 Reset form
+      setFormData({
+        brand: "",
+        customBrand: "",
+        influencerName: "",
+        amount: 0,
+        instagramLink: "",
+        email: "",
+        paymentMethod: "bank",
+        accountHolderName: "",
+        accountNumber: "",
+        ifscCode: "",
+        bankName: "",
+        upiId: "",
+        upiQrCode: null,
+      });
+    } else {
       toast({
         title: "Error",
-        description: error.message || "Something went wrong. Please try again later.",
+        description: result.error?.message || "Something went wrong. Please try again later.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  };
-
+  } catch (error: any) {
+    console.error("Error submitting form:", error);
+    toast({
+      title: "Error",
+      description: error.message || "Something went wrong. Please try again later.",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <>
       {showConfetti && <ConfettiEffect duration={5000} />}
