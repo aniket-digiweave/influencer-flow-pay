@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,35 +9,87 @@ import { Card } from "@/components/ui/card";
 import FormCard from "@/components/ui/FormCard";
 import { useToast } from "@/components/ui/use-toast";
 import ConfettiEffect from "@/components/ui/ConfettiEffect";
-import { getBrands, submitInfluencerForm } from "@/services/paymentService";
+import { 
+  getBrands, 
+  getInfluencersByBrand, 
+  submitInfluencerForm 
+} from "@/services/supabaseService";
 
 const InfluencerForm = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [influencers, setInfluencers] = useState<any[]>([]);
+  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
+  
   const [formData, setFormData] = useState({
     brand: "",
     customBrand: "",
+    influencerName: "",
+    amount: 0,
     instagramLink: "",
     email: "",
     paymentMethod: "bank",
-    accountName: "",
+    accountHolderName: "",
     accountNumber: "",
     ifscCode: "",
     bankName: "",
-    accountHolderName: "",
     upiId: "",
-    upiQrCode: "",
+    upiQrCode: null as File | null,
   });
+  
   const [showSuccess, setShowSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState("");
 
-  // Custom brands list
-  const brands = [
-    "YFF",
-    "Anand Home Store",
-    ...getBrands().filter(brand => brand !== "YFF" && brand !== "Anand Home Store")
-  ];
+  // Fetch brands on component mount
+  useEffect(() => {
+    const fetchBrands = async () => {
+      const brandNames = await getBrands();
+      setBrands(brandNames);
+    };
+    
+    fetchBrands();
+  }, []);
+  
+  // Fetch influencers when brand changes
+  useEffect(() => {
+    const fetchInfluencers = async () => {
+      if (formData.brand) {
+        const influencersList = await getInfluencersByBrand(formData.brand);
+        setInfluencers(influencersList);
+        
+        // Reset influencer selection
+        setFormData(prev => ({
+          ...prev,
+          influencerName: '',
+          amount: 0
+        }));
+        
+        setPendingAmount(null);
+      }
+    };
+    
+    fetchInfluencers();
+  }, [formData.brand]);
+  
+  // Update pending amount when influencer changes
+  useEffect(() => {
+    if (formData.influencerName) {
+      const selectedInfluencer = influencers.find(inf => inf.influencer_name === formData.influencerName);
+      if (selectedInfluencer) {
+        setPendingAmount(selectedInfluencer.pending_amount);
+        setFormData(prev => ({
+          ...prev,
+          amount: selectedInfluencer.pending_amount
+        }));
+      } else {
+        setPendingAmount(null);
+      }
+    } else {
+      setPendingAmount(null);
+    }
+  }, [formData.influencerName, influencers]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -50,16 +103,7 @@ const InfluencerForm = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files } = e.target;
     if (files && files[0]) {
-      const file = files[0];
-      // Convert file to base64 string for demo purposes
-      // In a real app, you would upload this to storage
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setFormData((prev) => ({ ...prev, [name]: event.target?.result }));
-        }
-      };
-      reader.readAsDataURL(file);
+      setFormData((prev) => ({ ...prev, [name]: files?.[0] || null }));
     }
   };
 
@@ -73,10 +117,10 @@ const InfluencerForm = () => {
       return false;
     }
     
-    if (formData.brand === "Other" && !formData.customBrand) {
+    if (!formData.influencerName) {
       toast({
         title: "Error",
-        description: "Please enter the brand name",
+        description: "Please select an influencer",
         variant: "destructive",
       });
       return false;
@@ -101,7 +145,7 @@ const InfluencerForm = () => {
     }
     
     if (formData.paymentMethod === "bank") {
-      if (!formData.accountNumber || !formData.ifscCode || !formData.bankName || !formData.accountHolderName) {
+      if (!formData.accountHolderName || !formData.accountNumber || !formData.ifscCode || !formData.bankName) {
         toast({
           title: "Error",
           description: "Please fill in all bank details",
@@ -110,10 +154,10 @@ const InfluencerForm = () => {
         return false;
       }
     } else if (formData.paymentMethod === "upi") {
-      if (!formData.upiId) {
+      if (!formData.upiId && !formData.upiQrCode) {
         toast({
           title: "Error",
-          description: "Please enter your UPI ID",
+          description: "Please enter your UPI ID or upload QR code",
           variant: "destructive",
         });
         return false;
@@ -133,80 +177,42 @@ const InfluencerForm = () => {
     setLoading(true);
     
     try {
-      // Get the actual brand name (selected or custom)
-      const brandName = formData.brand === "Other" ? formData.customBrand : formData.brand;
+      const result = await submitInfluencerForm(formData);
       
-      // Get payment details based on selected method
-      const paymentDetails = 
-        formData.paymentMethod === "bank" 
-          ? {
-              accountNumber: formData.accountNumber,
-              ifscCode: formData.ifscCode,
-              bankName: formData.bankName,
-              accountHolderName: formData.accountHolderName
-            }
-          : {
-              upiId: formData.upiId,
-              upiQrCode: formData.upiQrCode
-            };
-          
-      // Submit form to service
-      const result = submitInfluencerForm(
-        brandName,
-        formData.instagramLink,
-        JSON.stringify(paymentDetails),
-        formData.paymentMethod as "bank" | "upi",
-        formData.email
-      );
-      
-      // Send data to webhook - Using the correct webhook URL
-      try {
-        await fetch("https://aniketgore.app.n8n.cloud/webhook-test/b3eb0773-bf61-4e3f-b48e-446d7393d0d4", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            brand: brandName,
-            instagramLink: formData.instagramLink,
-            email: formData.email,
-            paymentMethod: formData.paymentMethod,
-            paymentDetails: paymentDetails,
-            paymentId: result.id,
-            timestamp: new Date().toISOString()
-          }),
-          mode: "no-cors"
+      if (result.success && result.data) {
+        // Show success message
+        setPaymentId(result.data.payment_id);
+        setShowConfetti(true);
+        setShowSuccess(true);
+        
+        // Reset form
+        setFormData({
+          brand: "",
+          customBrand: "",
+          influencerName: "",
+          amount: 0,
+          instagramLink: "",
+          email: "",
+          paymentMethod: "bank",
+          accountHolderName: "",
+          accountNumber: "",
+          ifscCode: "",
+          bankName: "",
+          upiId: "",
+          upiQrCode: null,
         });
-        console.log("Data sent to webhook successfully");
-      } catch (webhookError) {
-        console.error("Error sending data to webhook:", webhookError);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error?.message || "Something went wrong. Please try again later.",
+          variant: "destructive",
+        });
       }
-      
-      // Show success message
-      setPaymentId(result.id);
-      setShowConfetti(true);
-      setShowSuccess(true);
-      
-      // Reset form
-      setFormData({
-        brand: "",
-        customBrand: "",
-        instagramLink: "",
-        email: "",
-        paymentMethod: "bank",
-        accountName: "",
-        accountNumber: "",
-        ifscCode: "",
-        bankName: "",
-        accountHolderName: "",
-        upiId: "",
-        upiQrCode: "",
-      });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again later.",
+        description: error.message || "Something went wrong. Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -269,16 +275,30 @@ const InfluencerForm = () => {
               </Select>
             </div>
 
-            {formData.brand === "Other" && (
+            {formData.brand && (
               <div className="space-y-2">
-                <Label htmlFor="customBrand">Brand Name</Label>
-                <Input
-                  id="customBrand"
-                  name="customBrand"
-                  placeholder="Enter brand name"
-                  value={formData.customBrand}
-                  onChange={handleChange}
-                />
+                <Label htmlFor="influencerName">Influencer Name</Label>
+                <Select
+                  value={formData.influencerName}
+                  onValueChange={(value) => handleSelectChange("influencerName", value)}
+                >
+                  <SelectTrigger id="influencerName">
+                    <SelectValue placeholder="Select your name" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {influencers.map((influencer) => (
+                      <SelectItem key={influencer.id} value={influencer.influencer_name}>
+                        {influencer.influencer_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {pendingAmount !== null && (
+              <div className="p-3 bg-app-blue-100 rounded-md">
+                <p className="text-sm font-medium">Pending Amount: ₹{pendingAmount}</p>
               </div>
             )}
 

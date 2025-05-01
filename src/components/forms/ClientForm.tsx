@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import FormCard from "@/components/ui/FormCard";
 import { useToast } from "@/components/ui/use-toast";
 import ConfettiEffect from "@/components/ui/ConfettiEffect";
-import { submitClientPayment, getSubmissionById, InfluencerSubmission } from "@/services/paymentService";
+import { submitClientPayment } from "@/services/supabaseService";
 
 const ClientForm = () => {
   const { toast } = useToast();
@@ -15,10 +15,10 @@ const ClientForm = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [formData, setFormData] = useState({
     paymentId: "",
-    screenshot: "",
+    screenshot: null as File | null,
   });
   const [showSuccess, setShowSuccess] = useState(false);
-  const [influencer, setInfluencer] = useState<InfluencerSubmission | null>(null);
+  const [paymentConfirmation, setPaymentConfirmation] = useState<any>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -28,16 +28,7 @@ const ClientForm = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files } = e.target;
     if (files && files[0]) {
-      const file = files[0];
-      // Convert file to base64 string for demo purposes
-      // In a real app, you would upload this to storage
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setFormData((prev) => ({ ...prev, [name]: event.target?.result as string }));
-        }
-      };
-      reader.readAsDataURL(file);
+      setFormData((prev) => ({ ...prev, [name]: files?.[0] || null }));
     }
   };
 
@@ -73,48 +64,31 @@ const ClientForm = () => {
     setLoading(true);
     
     try {
-      // Look up the payment ID first
-      const submission = getSubmissionById(formData.paymentId);
+      const result = await submitClientPayment(formData);
       
-      if (!submission) {
-        toast({
-          title: "Payment ID Not Found",
-          description: "Please check the Payment ID and try again",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-      
-      // Submit payment confirmation
-      const result = submitClientPayment(
-        formData.paymentId,
-        formData.screenshot
-      );
-      
-      if (result.success && result.submission) {
+      if (result.success && result.data) {
         // Show success message
-        setInfluencer(result.submission);
+        setPaymentConfirmation(result.data);
         setShowConfetti(true);
         setShowSuccess(true);
         
         // Reset form
         setFormData({
           paymentId: "",
-          screenshot: "",
+          screenshot: null,
         });
       } else {
         toast({
           title: "Error",
-          description: "Failed to process payment confirmation",
+          description: result.error?.message || "Failed to process payment confirmation",
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again later.",
+        description: error.message || "Something went wrong. Please try again later.",
         variant: "destructive",
       });
     } finally {
@@ -141,8 +115,8 @@ const ClientForm = () => {
             <div className="py-4">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Payment Details</h3>
               <div className="bg-app-blue-100 rounded-lg p-3 text-left">
-                <p><span className="font-medium">Brand:</span> {influencer?.brand}</p>
-                <p><span className="font-medium">Payment ID:</span> {influencer?.id}</p>
+                <p><span className="font-medium">Brand:</span> {paymentConfirmation?.submission?.brand || 'N/A'}</p>
+                <p><span className="font-medium">Payment ID:</span> {paymentConfirmation?.payment_id}</p>
                 <p className="text-xs text-muted-foreground mt-2">
                   Confirmation email has been sent to the influencer.
                 </p>
@@ -196,7 +170,7 @@ const ClientForm = () => {
                 <p className="text-sm font-medium mb-2">Preview</p>
                 <div className="relative h-40 overflow-hidden rounded-md">
                   <img
-                    src={formData.screenshot}
+                    src={URL.createObjectURL(formData.screenshot)}
                     alt="Payment Screenshot"
                     className="object-cover w-full h-full"
                   />

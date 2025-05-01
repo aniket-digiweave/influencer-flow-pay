@@ -9,7 +9,146 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      brand_owner_map: {
+        Row: {
+          brand_name: string
+          created_at: string | null
+          id: string
+          owner_email: string
+        }
+        Insert: {
+          brand_name: string
+          created_at?: string | null
+          id?: string
+          owner_email: string
+        }
+        Update: {
+          brand_name?: string
+          created_at?: string | null
+          id?: string
+          owner_email?: string
+        }
+        Relationships: []
+      }
+      client_payments: {
+        Row: {
+          created_at: string | null
+          id: string
+          matched_submission_id: string | null
+          payment_id: string
+          screenshot_url: string
+          sent_to_influencer: boolean
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          matched_submission_id?: string | null
+          payment_id: string
+          screenshot_url: string
+          sent_to_influencer?: boolean
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          matched_submission_id?: string | null
+          payment_id?: string
+          screenshot_url?: string
+          sent_to_influencer?: boolean
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_payments_matched_submission_id_fkey"
+            columns: ["matched_submission_id"]
+            isOneToOne: false
+            referencedRelation: "influencer_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      influencer_master_list: {
+        Row: {
+          brand_name: string
+          created_at: string | null
+          id: string
+          influencer_name: string
+          pending_amount: number
+        }
+        Insert: {
+          brand_name: string
+          created_at?: string | null
+          id?: string
+          influencer_name: string
+          pending_amount?: number
+        }
+        Update: {
+          brand_name?: string
+          created_at?: string | null
+          id?: string
+          influencer_name?: string
+          pending_amount?: number
+        }
+        Relationships: []
+      }
+      influencer_submissions: {
+        Row: {
+          amount: number
+          bank_account_name: string | null
+          bank_account_no: string | null
+          bank_name: string | null
+          brand: string
+          created_at: string | null
+          email: string
+          id: string
+          ifsc: string | null
+          influencer_name: string
+          instagram_post: string
+          owner_email: string
+          payment_id: string
+          payment_method: string
+          payment_status: string
+          upi_qr: string | null
+        }
+        Insert: {
+          amount: number
+          bank_account_name?: string | null
+          bank_account_no?: string | null
+          bank_name?: string | null
+          brand: string
+          created_at?: string | null
+          email: string
+          id?: string
+          ifsc?: string | null
+          influencer_name: string
+          instagram_post: string
+          owner_email: string
+          payment_id: string
+          payment_method: string
+          payment_status?: string
+          upi_qr?: string | null
+        }
+        Update: {
+          amount?: number
+          bank_account_name?: string | null
+          bank_account_no?: string | null
+          bank_name?: string | null
+          brand?: string
+          created_at?: string | null
+          email?: string
+          id?: string
+          ifsc?: string | null
+          influencer_name?: string
+          instagram_post?: string
+          owner_email?: string
+          payment_id?: string
+          payment_method?: string
+          payment_status?: string
+          upi_qr?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

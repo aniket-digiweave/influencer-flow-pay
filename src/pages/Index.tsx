@@ -1,9 +1,24 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import PageLayout from "@/components/layouts/PageLayout";
 import InfluencerForm from "@/components/forms/InfluencerForm";
+import { createStorageBuckets } from "@/services/createStorageBuckets";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
+  useEffect(() => {
+    // Initialize storage buckets if needed
+    createStorageBuckets();
+    
+    // Check for authentication
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      console.log("Current session:", data.session ? "Authenticated" : "Not authenticated");
+    };
+    
+    checkSession();
+  }, []);
+  
   return (
     <PageLayout>
       <div className="max-w-3xl mx-auto">

@@ -1,6 +1,9 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -8,6 +11,8 @@ interface PageLayoutProps {
 }
 
 const PageLayout = ({ children, className }: PageLayoutProps) => {
+  const { user, signOut } = useAuth();
+
   return (
     <div className="min-h-screen gradient-bg flex flex-col">
       <header className="py-4 px-6 flex flex-wrap justify-between items-center gap-4">
@@ -30,13 +35,19 @@ const PageLayout = ({ children, className }: PageLayoutProps) => {
           </svg>
           <h1 className="text-xl font-semibold ml-2">Digiweave Mediatech</h1>
         </div>
-        <nav className="space-x-4">
+        <nav className="flex items-center space-x-4">
           <a href="/" className="text-sm font-medium hover:text-primary transition-colors">
             Influencer Form
           </a>
           <a href="/client" className="text-sm font-medium hover:text-primary transition-colors">
             Client Form
           </a>
+          {user && (
+            <Button variant="outline" size="sm" onClick={signOut} className="flex items-center gap-1">
+              <LogOut size={16} />
+              <span>Logout</span>
+            </Button>
+          )}
         </nav>
       </header>
       
