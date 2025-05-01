@@ -203,7 +203,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     if (result.success && result.data) {
       // ✅ POST to n8n webhook after Supabase success
-      await fetch("https://aniketgore.app.n8n.cloud/webhook-test/acbc77a6-6d23-41a1-b261-9d4e6f1058c1",{
+      await fetch("https://aniketgore.app.n8n.cloud/webhook/acbc77a6-6d23-41a1-b261-9d4e6f1058c1",{
         method: "POST",
         headers: {
           "Content-Type": "application/json",
