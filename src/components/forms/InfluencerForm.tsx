@@ -45,39 +45,60 @@ const InfluencerForm = () => {
   // Fetch brands on component mount
   useEffect(() => {
     const fetchBrands = async () => {
-      const brandNames = await getBrands();
-      setBrands(brandNames);
+      try {
+        const brandNames = await getBrands();
+        console.log("Fetched brands:", brandNames);
+        setBrands(brandNames);
+      } catch (error) {
+        console.error("Error fetching brands:", error);
+        toast({
+          title: "Error",
+          description: "Could not load brands. Please try again later.",
+          variant: "destructive",
+        });
+      }
     };
     
     fetchBrands();
-  }, []);
+  }, [toast]);
   
   // Fetch influencers when brand changes
   useEffect(() => {
     const fetchInfluencers = async () => {
       if (formData.brand) {
-        const influencersList = await getInfluencersByBrand(formData.brand);
-        setInfluencers(influencersList);
-        
-        // Reset influencer selection
-        setFormData(prev => ({
-          ...prev,
-          influencerName: '',
-          amount: 0
-        }));
-        
-        setPendingAmount(null);
+        try {
+          const influencersList = await getInfluencersByBrand(formData.brand);
+          console.log("Fetched influencers for brand", formData.brand, ":", influencersList);
+          setInfluencers(influencersList);
+          
+          // Reset influencer selection
+          setFormData(prev => ({
+            ...prev,
+            influencerName: '',
+            amount: 0
+          }));
+          
+          setPendingAmount(null);
+        } catch (error) {
+          console.error("Error fetching influencers:", error);
+          toast({
+            title: "Error",
+            description: "Could not load influencers. Please try again later.",
+            variant: "destructive",
+          });
+        }
       }
     };
     
     fetchInfluencers();
-  }, [formData.brand]);
+  }, [formData.brand, toast]);
   
   // Update pending amount when influencer changes
   useEffect(() => {
     if (formData.influencerName) {
       const selectedInfluencer = influencers.find(inf => inf.influencer_name === formData.influencerName);
       if (selectedInfluencer) {
+        console.log("Selected influencer:", selectedInfluencer);
         setPendingAmount(selectedInfluencer.pending_amount);
         setFormData(prev => ({
           ...prev,
@@ -97,6 +118,7 @@ const InfluencerForm = () => {
   };
 
   const handleSelectChange = (name: string, value: string) => {
+    console.log(`Changing ${name} to ${value}`);
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 

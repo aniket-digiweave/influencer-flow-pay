@@ -11,13 +11,20 @@ export const generatePaymentId = (): string => {
 // Get all brands
 export const getBrands = async (): Promise<string[]> => {
   try {
+    console.log("Fetching brands from Supabase...");
     const { data, error } = await supabase
       .from('brand_owner_map')
       .select('brand_name')
       .order('brand_name');
       
-    if (error) throw error;
-    return data?.map(item => item.brand_name) || [];
+    if (error) {
+      console.error("Error in getBrands:", error);
+      throw error;
+    }
+    
+    const brandNames = data?.map(item => item.brand_name) || [];
+    console.log("Fetched brands:", brandNames);
+    return brandNames;
   } catch (error) {
     console.error('Error fetching brands:', error);
     return [];
@@ -29,12 +36,18 @@ export const getInfluencersByBrand = async (brandName: string): Promise<any[]> =
   if (!brandName) return [];
   
   try {
+    console.log(`Fetching influencers for brand: ${brandName}`);
     const { data, error } = await supabase
       .from('influencer_master_list')
       .select('*')
       .eq('brand_name', brandName);
       
-    if (error) throw error;
+    if (error) {
+      console.error("Error in getInfluencersByBrand:", error);
+      throw error;
+    }
+    
+    console.log("Fetched influencers:", data);
     return data || [];
   } catch (error) {
     console.error('Error fetching influencers by brand:', error);

@@ -4,8 +4,11 @@ import PageLayout from "@/components/layouts/PageLayout";
 import InfluencerForm from "@/components/forms/InfluencerForm";
 import { createStorageBuckets } from "@/services/createStorageBuckets";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
+  const { user, loading } = useAuth();
+  
   useEffect(() => {
     // Initialize storage buckets if needed
     createStorageBuckets();
