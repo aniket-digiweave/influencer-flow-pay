@@ -52,11 +52,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password,
     });
     
+    // Convert the Supabase response to match our expected return type
+    const returnValue = {
+      error: result.error,
+      data: result.data.session,
+    };
+    
     if (!result.error && result.data.session) {
       navigate('/');
     }
     
-    return result;
+    return returnValue;
   };
 
   const signOut = async () => {
