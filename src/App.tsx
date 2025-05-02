@@ -15,24 +15,26 @@ import AdminDashboard from "./pages/AdminDashboard";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <BrowserRouter>
+  <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route 
               path="/" 
               element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
+                <Index />
               } 
             />
-            {/* Client page is now publicly accessible */}
-            <Route path="/client" element={<ClientPage />} />
+            <Route 
+              path="/client" 
+              element={
+                <ClientPage />
+              } 
+            />
             <Route 
               path="/admin" 
               element={
@@ -44,9 +46,9 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
-      </QueryClientProvider>
+      </BrowserRouter>
     </TooltipProvider>
-  </BrowserRouter>
+  </QueryClientProvider>
 );
 
 export default App;

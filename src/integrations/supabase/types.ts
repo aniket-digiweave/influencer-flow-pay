@@ -68,54 +68,27 @@ export type Database = {
           },
         ]
       }
-      influencer_map_list: {
+      influencer_master_list: {
         Row: {
           brand_name: string
           created_at: string | null
           id: string
-          instagram_handle: string
+          influencer_name: string
+          pending_amount: number
         }
         Insert: {
           brand_name: string
           created_at?: string | null
           id?: string
-          instagram_handle: string
+          influencer_name: string
+          pending_amount?: number
         }
         Update: {
           brand_name?: string
           created_at?: string | null
           id?: string
-          instagram_handle?: string
-        }
-        Relationships: []
-      }
-      influencer_payments: {
-        Row: {
-          amount: number
-          brand_name: string
-          created_at: string | null
-          id: string
-          instagram_handle: string
-          payment_id: string | null
-          status: string
-        }
-        Insert: {
-          amount?: number
-          brand_name: string
-          created_at?: string | null
-          id?: string
-          instagram_handle: string
-          payment_id?: string | null
-          status?: string
-        }
-        Update: {
-          amount?: number
-          brand_name?: string
-          created_at?: string | null
-          id?: string
-          instagram_handle?: string
-          payment_id?: string | null
-          status?: string
+          influencer_name?: string
+          pending_amount?: number
         }
         Relationships: []
       }

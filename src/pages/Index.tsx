@@ -5,27 +5,21 @@ import InfluencerForm from "@/components/forms/InfluencerForm";
 import { createStorageBuckets } from "@/services/createStorageBuckets";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   
   useEffect(() => {
     // Initialize storage buckets if needed
-    const initBuckets = async () => {
-      try {
-        await createStorageBuckets();
-      } catch (error) {
-        console.error("Error initializing storage buckets:", error);
-        toast({
-          title: "Warning",
-          description: "Storage initialization failed. Some features may not work correctly.",
-          variant: "destructive",
-        });
-      }
+    createStorageBuckets();
+    
+    // Check for authentication
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      console.log("Current session:", data.session ? "Authenticated" : "Not authenticated");
     };
     
-    initBuckets();
+    checkSession();
   }, []);
   
   return (
