@@ -31,14 +31,8 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/client" 
-              element={
-                <ProtectedRoute>
-                  <ClientPage />
-                </ProtectedRoute>
-              } 
-            />
+            {/* Client page is now publicly accessible */}
+            <Route path="/client" element={<ClientPage />} />
             <Route 
               path="/admin" 
               element={

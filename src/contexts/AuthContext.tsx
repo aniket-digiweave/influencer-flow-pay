@@ -40,8 +40,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             description: 'You have been successfully logged out',
           });
         } else if (event === 'SIGNED_IN') {
+          // Only redirect to protected routes, not to /client which is public
           const redirectPath = location.state?.from?.pathname || '/';
-          navigate(redirectPath);
+          if (redirectPath !== '/client') {
+            navigate(redirectPath);
+          }
         }
       }
     );
