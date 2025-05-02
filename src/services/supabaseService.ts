@@ -90,23 +90,51 @@ export const submitInfluencerForm = async (formData: any): Promise<{ success: bo
     // Handle UPI QR upload if applicable
     let upiQrUrl = null;
     if (formData.paymentMethod === 'upi' && formData.upiQrCode) {
-      const fileExt = formData.upiQrCode.name.split('.').pop();
-      const fileName = `${paymentId}_upi_qr.${fileExt}`;
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('payment-qrs')
-        .upload(fileName, formData.upiQrCode);
+      try {
+        console.log("Starting UPI QR code upload...");
         
-      if (uploadError) throw uploadError;
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('payment-qrs')
-        .getPublicUrl(fileName);
+        // Check if the bucket exists
+        const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+        if (bucketError) {
+          console.error("Error listing buckets:", bucketError);
+          throw bucketError;
+        }
         
-      upiQrUrl = publicUrl;
+        const bucketExists = buckets.some(bucket => bucket.name === 'payment-qrs');
+        console.log("payment-qrs bucket exists:", bucketExists);
+        
+        if (!bucketExists) {
+          throw new Error("payment-qrs bucket not found. Please check storage initialization.");
+        }
+        
+        const fileExt = formData.upiQrCode.name.split('.').pop();
+        const fileName = `${paymentId}_upi_qr.${fileExt}`;
+        
+        console.log(`Uploading file ${fileName} to payment-qrs bucket...`);
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('payment-qrs')
+          .upload(fileName, formData.upiQrCode);
+          
+        if (uploadError) {
+          console.error("Error uploading UPI QR:", uploadError);
+          throw uploadError;
+        }
+        
+        console.log("UPI QR uploaded successfully. Getting public URL...");
+        const { data: { publicUrl } } = supabase.storage
+          .from('payment-qrs')
+          .getPublicUrl(fileName);
+        
+        console.log("Public URL:", publicUrl);
+        upiQrUrl = publicUrl;
+      } catch (uploadError) {
+        console.error("Error in UPI QR upload process:", uploadError);
+        throw uploadError;
+      }
     }
     
     // Create payment record
+    console.log("Creating payment record...");
     const { data, error } = await supabase
       .from('influencer_submissions')
       .insert({
@@ -128,10 +156,14 @@ export const submitInfluencerForm = async (formData: any): Promise<{ success: bo
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error("Error inserting influencer submission:", error);
+      throw error;
+    }
     
     // Send data to webhook
     try {
+      console.log("Sending data to webhook...");
       await fetch("https://aniketgore.app.n8n.cloud/webhook-test/b3eb0773-bf61-4e3f-b48e-446d7393d0d4", {
         method: "POST",
         headers: {
@@ -150,8 +182,10 @@ export const submitInfluencerForm = async (formData: any): Promise<{ success: bo
         }),
         mode: "no-cors"
       });
+      console.log("Webhook sent successfully");
     } catch (webhookError) {
       console.error("Error sending data to webhook:", webhookError);
+      // We don't throw here as we don't want the webhook to fail the whole process
     }
     
     return { success: true, data };
