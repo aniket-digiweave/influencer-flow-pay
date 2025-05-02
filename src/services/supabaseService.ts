@@ -38,8 +38,8 @@ export const getInfluencersByBrand = async (brandName: string): Promise<any[]> =
   try {
     console.log(`Fetching influencers for brand: ${brandName}`);
     const { data, error } = await supabase
-      .from('influencer_master_list')
-      .select('*')
+      .from('influencer_map_list')
+      .select('instagram_handle, brand_name')
       .eq('brand_name', brandName);
       
     if (error) {
@@ -51,6 +51,37 @@ export const getInfluencersByBrand = async (brandName: string): Promise<any[]> =
     return data || [];
   } catch (error) {
     console.error('Error fetching influencers by brand:', error);
+    return [];
+  }
+};
+
+// Get pending payments for an influencer
+export const getPendingPaymentsForInfluencer = async (instagramHandle: string, brandName?: string): Promise<any[]> => {
+  if (!instagramHandle) return [];
+  
+  try {
+    console.log(`Fetching pending payments for influencer: ${instagramHandle}`);
+    let query = supabase
+      .from('influencer_payments')
+      .select('*')
+      .eq('instagram_handle', instagramHandle)
+      .eq('status', 'Pending');
+      
+    if (brandName) {
+      query = query.eq('brand_name', brandName);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error("Error in getPendingPaymentsForInfluencer:", error);
+      throw error;
+    }
+    
+    console.log("Fetched pending payments:", data);
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching pending payments:', error);
     return [];
   }
 };
@@ -133,13 +164,27 @@ export const submitInfluencerForm = async (formData: any): Promise<{ success: bo
       }
     }
     
+    // Update the payment in the influencer_payments table
+    if (formData.paymentId) {
+      // If we have a specific payment ID, update that record's status
+      const { error: updateError } = await supabase
+        .from('influencer_payments')
+        .update({ status: 'Processing' })
+        .eq('payment_id', formData.paymentId);
+        
+      if (updateError) {
+        console.error("Error updating payment status:", updateError);
+        throw updateError;
+      }
+    }
+    
     // Create payment record
     console.log("Creating payment record...");
     const { data, error } = await supabase
       .from('influencer_submissions')
       .insert({
         brand: formData.brand,
-        influencer_name: formData.influencerName,
+        influencer_name: formData.instagramHandle,
         instagram_post: formData.instagramLink,
         email: formData.email,
         payment_method: formData.paymentMethod,
@@ -171,13 +216,14 @@ export const submitInfluencerForm = async (formData: any): Promise<{ success: bo
         },
         body: JSON.stringify({
           brand: formData.brand,
-          influencer_name: formData.influencerName,
+          influencer_name: formData.instagramHandle,
           instagram_post: formData.instagramLink,
           email: formData.email,
           payment_method: formData.paymentMethod,
           amount: formData.amount,
           payment_id: paymentId,
           owner_email: ownerEmail,
+          is_collaboration: formData.isCollaboration,
           timestamp: new Date().toISOString()
         }),
         mode: "no-cors"

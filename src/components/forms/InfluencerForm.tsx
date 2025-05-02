@@ -9,9 +9,11 @@ import { Card } from "@/components/ui/card";
 import FormCard from "@/components/ui/FormCard";
 import { useToast } from "@/components/ui/use-toast";
 import ConfettiEffect from "@/components/ui/ConfettiEffect";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
   getBrands, 
-  getInfluencersByBrand, 
+  getInfluencersByBrand,
+  getPendingPaymentsForInfluencer,
   submitInfluencerForm 
 } from "@/services/supabaseService";
 
@@ -21,26 +23,34 @@ const InfluencerForm = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [brands, setBrands] = useState<string[]>([]);
   const [influencers, setInfluencers] = useState<any[]>([]);
-  const [pendingAmount, setPendingAmount] = useState<number | null>(null);
+  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [formErrors, setFormErrors] = useState({
+    instagramLink: '',
+    email: '',
+    upiId: '',
+  });
   
   const [formData, setFormData] = useState({
     brand: "",
     customBrand: "",
-    influencerName: "",
+    instagramHandle: "",
     amount: 0,
     instagramLink: "",
     email: "",
-    paymentMethod: "bank",
+    paymentMethod: "upi",
     accountHolderName: "",
     accountNumber: "",
     ifscCode: "",
     bankName: "",
     upiId: "",
     upiQrCode: null as File | null,
+    paymentId: "",
+    isCollaboration: "Yes"
   });
   
   const [showSuccess, setShowSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState("");
+  const [hasPendingPayment, setHasPendingPayment] = useState(false);
 
   // Fetch brands on component mount
   useEffect(() => {
@@ -74,11 +84,13 @@ const InfluencerForm = () => {
           // Reset influencer selection
           setFormData(prev => ({
             ...prev,
-            influencerName: '',
-            amount: 0
+            instagramHandle: '',
+            amount: 0,
+            paymentId: ''
           }));
           
-          setPendingAmount(null);
+          setPendingPayments([]);
+          setHasPendingPayment(false);
         } catch (error) {
           console.error("Error fetching influencers:", error);
           toast({
@@ -93,33 +105,76 @@ const InfluencerForm = () => {
     fetchInfluencers();
   }, [formData.brand, toast]);
   
-  // Update pending amount when influencer changes
+  // Update pending payments when influencer changes
   useEffect(() => {
-    if (formData.influencerName) {
-      const selectedInfluencer = influencers.find(inf => inf.influencer_name === formData.influencerName);
-      if (selectedInfluencer) {
-        console.log("Selected influencer:", selectedInfluencer);
-        setPendingAmount(selectedInfluencer.pending_amount);
-        setFormData(prev => ({
-          ...prev,
-          amount: selectedInfluencer.pending_amount
-        }));
+    const fetchPendingPayments = async () => {
+      if (formData.instagramHandle && formData.brand) {
+        try {
+          const payments = await getPendingPaymentsForInfluencer(formData.instagramHandle, formData.brand);
+          setPendingPayments(payments);
+          
+          const hasPayments = payments && payments.length > 0;
+          setHasPendingPayment(hasPayments);
+          
+          if (hasPayments) {
+            // If there's only one payment, auto-select it
+            if (payments.length === 1) {
+              setFormData(prev => ({
+                ...prev,
+                amount: payments[0].amount,
+                paymentId: payments[0].payment_id || ''
+              }));
+            } else {
+              // Reset amount if there are multiple payments to choose from
+              setFormData(prev => ({
+                ...prev,
+                amount: 0,
+                paymentId: ''
+              }));
+            }
+          } else {
+            // No pending payments
+            setFormData(prev => ({
+              ...prev,
+              amount: 0,
+              paymentId: ''
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching pending payments:", error);
+          toast({
+            title: "Error",
+            description: "Could not load payment information. Please try again later.",
+            variant: "destructive",
+          });
+        }
       } else {
-        setPendingAmount(null);
+        setPendingPayments([]);
+        setHasPendingPayment(false);
       }
-    } else {
-      setPendingAmount(null);
-    }
-  }, [formData.influencerName, influencers]);
+    };
+    
+    fetchPendingPayments();
+  }, [formData.instagramHandle, formData.brand, toast]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Clear specific error when user types in the field
+    if (name in formErrors) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleSelectChange = (name: string, value: string) => {
     console.log(`Changing ${name} to ${value}`);
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Clear specific error when user changes selection
+    if (name in formErrors) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,44 +183,54 @@ const InfluencerForm = () => {
       setFormData((prev) => ({ ...prev, [name]: files?.[0] || null }));
     }
   };
-
+  
+  const handlePaymentSelect = (paymentId: string, amount: number) => {
+    setFormData(prev => ({
+      ...prev,
+      paymentId,
+      amount
+    }));
+  };
+  
   const validateForm = () => {
-    if (!formData.brand) {
-      toast({
-        title: "Error",
-        description: "Please select a brand",
-        variant: "destructive",
-      });
-      return false;
+    let isValid = true;
+    const newErrors = { instagramLink: '', email: '', upiId: '' };
+    
+    // Instagram Link validation
+    if (formData.instagramLink) {
+      if (!formData.instagramLink.includes('instagram.com')) {
+        newErrors.instagramLink = 'The link must be from instagram.com';
+        isValid = false;
+      }
+    } else {
+      newErrors.instagramLink = 'Instagram post link is required';
+      isValid = false;
     }
     
-    if (!formData.influencerName) {
-      toast({
-        title: "Error",
-        description: "Please select an influencer",
-        variant: "destructive",
-      });
-      return false;
+    // Email validation
+    if (formData.email) {
+      if (!formData.email.includes('@')) {
+        newErrors.email = 'Please enter a valid email address';
+        isValid = false;
+      } else if (formData.instagramHandle && !formData.email.toLowerCase().includes(formData.instagramHandle.toLowerCase())) {
+        newErrors.email = 'Email should include your Instagram username';
+        isValid = false;
+      }
+    } else {
+      newErrors.email = 'Email is required';
+      isValid = false;
     }
     
-    if (!formData.instagramLink) {
-      toast({
-        title: "Error",
-        description: "Please enter your Instagram post link",
-        variant: "destructive",
-      });
-      return false;
+    // UPI ID validation
+    if (formData.paymentMethod === 'upi' && formData.upiId) {
+      const parts = formData.upiId.split('@');
+      if (parts.length !== 2 || parts[0].length < 3 || parts[1].length < 3) {
+        newErrors.upiId = 'UPI ID should be in format username@provider';
+        isValid = false;
+      }
     }
     
-    if (!formData.email) {
-      toast({
-        title: "Error",
-        description: "Please enter your email address",
-        variant: "destructive",
-      });
-      return false;
-    }
-    
+    // Payment method validation
     if (formData.paymentMethod === "bank") {
       if (!formData.accountHolderName || !formData.accountNumber || !formData.ifscCode || !formData.bankName) {
         toast({
@@ -173,7 +238,7 @@ const InfluencerForm = () => {
           description: "Please fill in all bank details",
           variant: "destructive",
         });
-        return false;
+        isValid = false;
       }
     } else if (formData.paymentMethod === "upi") {
       if (!formData.upiId && !formData.upiQrCode) {
@@ -182,77 +247,89 @@ const InfluencerForm = () => {
           description: "Please enter your UPI ID or upload QR code",
           variant: "destructive",
         });
-        return false;
+        isValid = false;
       }
     }
     
-    return true;
-  };
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  if (!validateForm()) {
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const result = await submitInfluencerForm(formData);
-
-    if (result.success && result.data) {
-      // ✅ POST to n8n webhook after Supabase success
-      await fetch("https://aniketgore.app.n8n.cloud/webhook/acbc77a6-6d23-41a1-b261-9d4e6f1058c1",{
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          payment_id: result.data.payment_id,
-        }),
-      });
-
-      // 🎉 UI success handling
-      setPaymentId(result.data.payment_id);
-      setShowConfetti(true);
-      setShowSuccess(true);
-
-      // 🔄 Reset form
-      setFormData({
-        brand: "",
-        customBrand: "",
-        influencerName: "",
-        amount: 0,
-        instagramLink: "",
-        email: "",
-        paymentMethod: "bank",
-        accountHolderName: "",
-        accountNumber: "",
-        ifscCode: "",
-        bankName: "",
-        upiId: "",
-        upiQrCode: null,
-      });
-    } else {
+    // Basic checks for required fields
+    if (!formData.brand || !formData.instagramHandle) {
       toast({
         title: "Error",
-        description: result.error?.message || "Something went wrong. Please try again later.",
+        description: "Please select a brand and Instagram username",
         variant: "destructive",
       });
+      isValid = false;
     }
-  } catch (error: any) {
-    console.error("Error submitting form:", error);
-    toast({
-      title: "Error",
-      description: error.message || "Something went wrong. Please try again later.",
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+    
+    // Check if there's a pending payment before submission
+    if (!hasPendingPayment) {
+      toast({
+        title: "Error",
+        description: "You don't have any pending payments",
+        variant: "destructive",
+      });
+      isValid = false;
+    }
+    
+    setFormErrors(newErrors);
+    return isValid;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await submitInfluencerForm(formData);
+
+      if (result.success && result.data) {
+        // Success handling
+        setPaymentId(result.data.payment_id);
+        setShowConfetti(true);
+        setShowSuccess(true);
+
+        // Reset form
+        setFormData({
+          brand: "",
+          customBrand: "",
+          instagramHandle: "",
+          amount: 0,
+          instagramLink: "",
+          email: "",
+          paymentMethod: "upi",
+          accountHolderName: "",
+          accountNumber: "",
+          ifscCode: "",
+          bankName: "",
+          upiId: "",
+          upiQrCode: null,
+          paymentId: "",
+          isCollaboration: "Yes"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error?.message || "Something went wrong. Please try again later.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error submitting form:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Something went wrong. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   return (
     <>
       {showConfetti && <ConfettiEffect duration={5000} />}
@@ -310,18 +387,18 @@ const handleSubmit = async (e: React.FormEvent) => {
 
             {formData.brand && (
               <div className="space-y-2">
-                <Label htmlFor="influencerName">Influencer Name</Label>
+                <Label htmlFor="instagramHandle">Instagram Username</Label>
                 <Select
-                  value={formData.influencerName}
-                  onValueChange={(value) => handleSelectChange("influencerName", value)}
+                  value={formData.instagramHandle}
+                  onValueChange={(value) => handleSelectChange("instagramHandle", value)}
                 >
-                  <SelectTrigger id="influencerName">
-                    <SelectValue placeholder="Select your name" />
+                  <SelectTrigger id="instagramHandle">
+                    <SelectValue placeholder="Select your username" />
                   </SelectTrigger>
                   <SelectContent>
                     {influencers.map((influencer) => (
-                      <SelectItem key={influencer.id} value={influencer.influencer_name}>
-                        {influencer.influencer_name}
+                      <SelectItem key={influencer.id || influencer.instagram_handle} value={influencer.instagram_handle}>
+                        {influencer.instagram_handle}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -329,11 +406,61 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
             )}
 
-            {pendingAmount !== null && (
-              <div className="p-3 bg-app-blue-100 rounded-md">
-                <p className="text-sm font-medium">Pending Amount: ₹{pendingAmount}</p>
-              </div>
+            {formData.instagramHandle && (
+              <>
+                {pendingPayments.length === 0 ? (
+                  <div className="p-3 bg-red-100 text-red-800 rounded-md">
+                    <p className="text-sm font-medium">You have no pending payments</p>
+                  </div>
+                ) : pendingPayments.length === 1 ? (
+                  <div className="p-3 bg-app-blue-100 rounded-md">
+                    <p className="text-sm font-medium">Pending Amount: ₹{pendingPayments[0].amount}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="pendingPayment">Select Pending Payment</Label>
+                    <Select
+                      value={formData.paymentId}
+                      onValueChange={(value) => {
+                        const selectedPayment = pendingPayments.find(p => p.payment_id === value);
+                        if (selectedPayment) {
+                          handlePaymentSelect(value, selectedPayment.amount);
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="pendingPayment">
+                        <SelectValue placeholder="Select payment" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pendingPayments.map((payment) => (
+                          <SelectItem key={payment.id} value={payment.payment_id || payment.id}>
+                            {payment.brand_name} - ₹{payment.amount}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
             )}
+
+            <div className="space-y-2">
+              <Label>Was this post a collaboration?</Label>
+              <RadioGroup
+                value={formData.isCollaboration}
+                onValueChange={(value) => handleSelectChange("isCollaboration", value)}
+                className="flex space-x-4 pt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="Yes" id="collab-yes" />
+                  <Label htmlFor="collab-yes">Yes</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="No" id="collab-no" />
+                  <Label htmlFor="collab-no">No</Label>
+                </div>
+              </RadioGroup>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="instagramLink">Instagram Post Link</Label>
@@ -344,7 +471,11 @@ const handleSubmit = async (e: React.FormEvent) => {
                 placeholder="https://www.instagram.com/p/..."
                 value={formData.instagramLink}
                 onChange={handleChange}
+                disabled={!hasPendingPayment}
               />
+              {formErrors.instagramLink && (
+                <p className="text-sm text-red-500">{formErrors.instagramLink}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -356,7 +487,11 @@ const handleSubmit = async (e: React.FormEvent) => {
                 placeholder="your@email.com"
                 value={formData.email}
                 onChange={handleChange}
+                disabled={!hasPendingPayment}
               />
+              {formErrors.email && (
+                <p className="text-sm text-red-500">{formErrors.email}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Payment confirmation will be sent to this email
               </p>
@@ -367,24 +502,26 @@ const handleSubmit = async (e: React.FormEvent) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button
                   type="button"
-                  variant={formData.paymentMethod === "bank" ? "default" : "outline"}
-                  onClick={() => handleSelectChange("paymentMethod", "bank")}
-                  className="w-full"
-                >
-                  Bank Transfer
-                </Button>
-                <Button
-                  type="button"
                   variant={formData.paymentMethod === "upi" ? "default" : "outline"}
                   onClick={() => handleSelectChange("paymentMethod", "upi")}
                   className="w-full"
+                  disabled={!hasPendingPayment}
                 >
                   UPI
+                </Button>
+                <Button
+                  type="button"
+                  variant={formData.paymentMethod === "bank" ? "default" : "outline"}
+                  onClick={() => handleSelectChange("paymentMethod", "bank")}
+                  className="w-full"
+                  disabled={!hasPendingPayment}
+                >
+                  Bank Transfer
                 </Button>
               </div>
             </div>
 
-            {formData.paymentMethod === "bank" && (
+            {formData.paymentMethod === "bank" && hasPendingPayment && (
               <div className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="accountHolderName">Account Holder Name</Label>
@@ -432,7 +569,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
             )}
 
-            {formData.paymentMethod === "upi" && (
+            {formData.paymentMethod === "upi" && hasPendingPayment && (
               <div className="space-y-2">
                 <Label htmlFor="upiId">UPI ID or Upload QR Code</Label>
                 <Input
@@ -443,6 +580,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                   onChange={handleChange}
                   className="mb-2"
                 />
+                {formErrors.upiId && (
+                  <p className="text-sm text-red-500">{formErrors.upiId}</p>
+                )}
                 <Input
                   id="upiQrCode"
                   name="upiQrCode"
@@ -456,7 +596,7 @@ const handleSubmit = async (e: React.FormEvent) => {
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={loading || !hasPendingPayment}
             >
               {loading ? "Processing..." : "Submit Details"}
             </Button>

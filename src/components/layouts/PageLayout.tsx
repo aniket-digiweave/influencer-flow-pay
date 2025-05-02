@@ -17,23 +17,12 @@ const PageLayout = ({ children, className }: PageLayoutProps) => {
     <div className="min-h-screen gradient-bg flex flex-col">
       <header className="py-4 px-6 flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center">
-          <svg 
-            width="32" 
-            height="32" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="text-primary"
-          >
-            <path 
-              d="M12 6V18M18 12H6" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            />
-          </svg>
-          <h1 className="text-xl font-semibold ml-2">Digiweave Mediatech</h1>
+          {/* Logo */}
+          <img 
+            src="/digiweave-logo.svg" 
+            alt="Digiweave Logo" 
+            className="h-8 w-auto mr-2"
+          />
         </div>
         <nav className="flex items-center space-x-4">
           <a href="/" className="text-sm font-medium hover:text-primary transition-colors">

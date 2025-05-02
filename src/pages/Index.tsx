@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   
   useEffect(() => {
     // Initialize storage buckets if needed
@@ -26,17 +26,6 @@ const Index = () => {
     };
     
     initBuckets();
-    
-    // Check for authentication
-    const checkSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      console.log("Current session:", data.session ? "Authenticated" : "Not authenticated");
-      if (error) {
-        console.error("Session check error:", error);
-      }
-    };
-    
-    checkSession();
   }, []);
   
   return (
